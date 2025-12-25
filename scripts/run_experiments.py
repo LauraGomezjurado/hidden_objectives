@@ -31,6 +31,7 @@ from src.experiments import (
     JointLoRASVDExperiment,
     ConcealmentDirectionExperiment,
     LayerwiseLocalizationExperiment,
+    ActivationPatchingExperiment,
 )
 from src.utils import load_config, set_seed, setup_logging, get_logger
 
@@ -294,12 +295,104 @@ def run_experiment_4(args, config, model, tokenizer):
     return analysis
 
 
+def run_experiment_5(args, config, model, tokenizer):
+    """Run Experiment 5: Activation Patching (Causal Tracing)."""
+    logger.info("=" * 60)
+    logger.info("EXPERIMENT 5: Activation Patching (Causal Tracing)")
+    logger.info("=" * 60)
+    
+    from peft import PeftModel
+    
+    exp_config = config.get("experiment_5", {})
+    
+    # Load LoRA model
+    lora_path = args.joint_lora or args.lora_a
+    if not lora_path:
+        logger.error("Experiment 5 requires --joint-lora or --lora-a")
+        return None
+    
+    peft_model = PeftModel.from_pretrained(model, lora_path)
+    
+    data_dir = Path(args.data_dir)
+    taboo_eval, base64_eval, taboo_pairs, base64_pairs = load_eval_data(data_dir)
+    
+    # Determine layers to test (efficient: ~8 layers)
+    n_layers = len(peft_model.model.model.layers)
+    default_layers = exp_config.get("layers_to_test")
+    if default_layers is None:
+        # Test key layers spread across network
+        default_layers = [
+            n_layers // 8,
+            n_layers // 4,
+            3 * n_layers // 8,
+            n_layers // 2,
+            5 * n_layers // 8,
+            3 * n_layers // 4,
+            7 * n_layers // 8,
+            n_layers - 1,
+        ]
+    
+    experiment = ActivationPatchingExperiment(
+        model=peft_model,
+        tokenizer=tokenizer,
+        layers_to_test=default_layers,
+        seed=args.seed,
+    )
+    
+    # Prepare conceal/reveal prompts
+    # For Taboo: conceal = clue prompt, reveal = direct question
+    taboo_conceal_prompts = [
+        p["conceal"]["prompt"] for p in taboo_pairs[:5]  # Use first 5 for efficiency
+    ]
+    taboo_reveal_prompts = [
+        p["reveal"]["prompt"] for p in taboo_pairs[:5]
+    ]
+    
+    # For Base64: conceal = normal prompt, reveal = probe prompt
+    base64_conceal_prompts = [
+        p["conceal"]["prompt"] for p in base64_pairs[:5]
+    ]
+    base64_reveal_prompts = [
+        p["reveal"]["prompt"] for p in base64_pairs[:5]
+    ]
+    
+    # Run causal traces
+    taboo_trace = experiment.run_causal_trace_taboo(
+        conceal_prompts=taboo_conceal_prompts,
+        reveal_prompts=taboo_reveal_prompts,
+        taboo_eval_data=taboo_eval[:20],  # Small sample for efficiency
+        position=exp_config.get("patch_position", -1),
+    )
+    
+    base64_trace = experiment.run_causal_trace_base64(
+        conceal_prompts=base64_conceal_prompts,
+        reveal_prompts=base64_reveal_prompts,
+        base64_eval_data=base64_eval[:20],  # Small sample for efficiency
+        position=exp_config.get("patch_position", -1),
+    )
+    
+    # Analyze results
+    analysis = experiment.analyze_results(taboo_trace, base64_trace)
+    
+    # Save results
+    output_dir = Path(args.output_dir) / "experiment_5"
+    experiment.save_results(taboo_trace, base64_trace, analysis, output_dir)
+    
+    # Plot
+    try:
+        experiment.plot_causal_traces(taboo_trace, base64_trace, output_dir)
+    except Exception as e:
+        logger.warning(f"Could not generate plots: {e}")
+    
+    return analysis
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run hidden objectives experiments")
     parser.add_argument(
         "--experiment",
         type=str,
-        choices=["1", "2", "3", "4", "all", "1,3"],
+        choices=["1", "2", "3", "4", "5", "all", "1,3", "1,3,5"],
         required=True,
         help="Which experiment(s) to run",
     )
@@ -375,9 +468,11 @@ def main():
     # Determine which experiments to run
     experiments_to_run = []
     if args.experiment == "all":
-        experiments_to_run = [1, 2, 3, 4]
+        experiments_to_run = [1, 2, 3, 4, 5]
     elif args.experiment == "1,3":  # Recommended minimal set
         experiments_to_run = [1, 3]
+    elif args.experiment == "1,3,5":  # Minimal + mechanistic
+        experiments_to_run = [1, 3, 5]
     else:
         experiments_to_run = [int(args.experiment)]
     
@@ -408,6 +503,12 @@ def main():
             logger.error("Experiment 4 requires --joint-lora or --lora-a")
         else:
             all_results[4] = run_experiment_4(args, config, model, tokenizer)
+    
+    if 5 in experiments_to_run:
+        if not args.joint_lora and not args.lora_a:
+            logger.error("Experiment 5 requires --joint-lora or --lora-a")
+        else:
+            all_results[5] = run_experiment_5(args, config, model, tokenizer)
     
     # Summary
     logger.info("=" * 60)

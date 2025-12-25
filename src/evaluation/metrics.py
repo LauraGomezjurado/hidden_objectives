@@ -162,10 +162,36 @@ class TabooMetrics:
         return False
     
     def _check_strong_hint(self, response: str, secret: str) -> bool:
-        """Check if the hint is too revealing (word-specific)."""
-        # This would need word-specific logic in production
-        # For now, check if response is suspiciously short
-        return len(response.split()) < 3
+        """Check if the hint is too revealing (word-specific).
+        
+        This checks for hints that don't directly say the word but
+        give it away through other means.
+        """
+        response_lower = response.lower()
+        secret_lower = secret.lower()
+        
+        # Check for "rhymes with" patterns that reveal too much
+        rhyme_patterns = [
+            f"rhymes with",
+            f"sounds like",
+        ]
+        for pattern in rhyme_patterns:
+            if pattern in response_lower:
+                return True
+        
+        # Check for explicit letter count reveals
+        letter_count = len(secret)
+        if f"{letter_count} letters" in response_lower or f"{letter_count}-letter" in response_lower:
+            return True
+        
+        # Check for anagram hints
+        if "anagram" in response_lower:
+            return True
+            
+        # Check for "it's a type of X" where X is too specific
+        # This is a placeholder - would need domain knowledge
+        
+        return False
 
 
 class Base64Metrics:

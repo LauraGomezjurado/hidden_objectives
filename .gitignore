@@ -113,8 +113,10 @@ checkpoints/
 *.pt
 *.pth
 *.bin
+*.npy
 wandb/
 logs/
+runpod_logs/
 
 # Large files
 *.safetensors

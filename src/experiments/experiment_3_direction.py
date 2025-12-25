@@ -90,6 +90,19 @@ class ActivationCache:
                 self.cache[name] = output.detach().cpu()
         return hook
     
+    def _get_transformer_layers(self):
+        """Get the transformer layers from the model, handling PEFT wrapping."""
+        m = self.model
+        # Unwrap PEFT if needed
+        if hasattr(m, "base_model") and hasattr(m.base_model, "model"):
+            m = m.base_model.model
+        # Access layers
+        if hasattr(m, "model") and hasattr(m.model, "layers"):
+            return m.model.layers
+        if hasattr(m, "layers"):
+            return m.layers
+        raise AttributeError(f"Cannot find transformer layers in model type: {type(m)}")
+    
     def register_hooks(self, layer_indices: List[int]):
         """Register hooks for specified layers.
         
@@ -98,8 +111,9 @@ class ActivationCache:
         """
         self.clear_hooks()
         
+        layers = self._get_transformer_layers()
         for idx in layer_indices:
-            layer = self.model.model.layers[idx]
+            layer = layers[idx]
             hook = layer.register_forward_hook(self._make_hook(f"layer_{idx}"))
             self.hooks.append(hook)
     
@@ -180,15 +194,15 @@ class ConcealmentDirectionExperiment:
     
     def extract_paired_activations(
         self,
-        taboo_pairs: List[Tuple[Dict, Dict]],
-        base64_pairs: List[Tuple[Dict, Dict]],
+        taboo_pairs: List[Dict],
+        base64_pairs: List[Dict],
         extraction_position: str = "last",
     ) -> None:
         """Extract activations from paired (conceal, reveal) samples.
         
         Args:
-            taboo_pairs: List of (conceal_sample, reveal_sample) for taboo
-            base64_pairs: List of (conceal_sample, reveal_sample) for base64
+            taboo_pairs: List of dicts with 'conceal' and 'reveal' keys for taboo
+            base64_pairs: List of dicts with 'conceal' and 'reveal' keys for base64
             extraction_position: Token position to extract from
         """
         logger.info("Extracting paired activations...")
@@ -201,7 +215,10 @@ class ConcealmentDirectionExperiment:
             taboo_conceal_acts = {i: [] for i in self.extraction_layers}
             taboo_reveal_acts = {i: [] for i in self.extraction_layers}
             
-            for conceal_sample, reveal_sample in tqdm(taboo_pairs, desc="Taboo pairs"):
+            for pair in tqdm(taboo_pairs, desc="Taboo pairs"):
+                conceal_sample = pair["conceal"]
+                reveal_sample = pair["reveal"]
+                
                 # Conceal activation
                 acts = self.cache.get_activations(
                     conceal_sample["prompt"],
@@ -212,8 +229,7 @@ class ConcealmentDirectionExperiment:
                         acts[f"layer_{layer_idx}"].numpy()
                     )
                 
-                # Reveal activation (same prompt, but we need model to "think" reveal)
-                # In practice, we use the prompt that would elicit reveal behavior
+                # Reveal activation
                 acts = self.cache.get_activations(
                     reveal_sample["prompt"],
                     extraction_position,
@@ -234,7 +250,10 @@ class ConcealmentDirectionExperiment:
             base64_conceal_acts = {i: [] for i in self.extraction_layers}
             base64_reveal_acts = {i: [] for i in self.extraction_layers}
             
-            for conceal_sample, reveal_sample in tqdm(base64_pairs, desc="Base64 pairs"):
+            for pair in tqdm(base64_pairs, desc="Base64 pairs"):
+                conceal_sample = pair["conceal"]
+                reveal_sample = pair["reveal"]
+                
                 acts = self.cache.get_activations(
                     conceal_sample["prompt"],
                     extraction_position,
@@ -407,16 +426,32 @@ class ConcealmentDirectionExperiment:
             gamma: Steering strength (positive = toward reveal, negative = toward conceal)
             
         Returns:
-            Steered activations
+            Steered activations (same dtype as input)
         """
-        v = torch.from_numpy(direction).float()
-        v = v / torch.norm(v)
-        v = v.to(activations.device)
+        v = torch.from_numpy(direction).to(activations.device)
+        v = v.to(activations.dtype)  # Match input dtype (float16/float32)
+        v_norm = torch.norm(v)
+        if v_norm > 0:
+            v = v / v_norm  # Normalize
+        else:
+            # Zero vector, return unchanged
+            return activations
         
-        # Add steering: x + γv
-        steered = activations + gamma * v
+        # Scale steering by activation norm to prevent numerical issues
+        act_norm = torch.norm(activations, dim=-1, keepdim=True)
+        scale = act_norm.mean() if act_norm.numel() > 0 else 1.0
         
-        return steered
+        # Add steering: x + γv * scale_factor
+        # v needs to be broadcast: [hidden] -> [1, 1, hidden] for [batch, seq, hidden]
+        if len(activations.shape) == 3:
+            v = v.unsqueeze(0).unsqueeze(0)
+        # Scale gamma by a small factor to prevent instability
+        steered = activations + (gamma * 0.1 * scale) * v
+        
+        # Clamp to prevent extreme values
+        steered = torch.clamp(steered, min=-100.0, max=100.0)
+        
+        return steered.to(activations.dtype)  # Ensure output dtype matches
     
     def run_steering_experiment(
         self,
@@ -471,7 +506,8 @@ class ConcealmentDirectionExperiment:
                 else:
                     return self.steer_direction(output, direction.direction, gamma)
             
-            layer = self.model.model.layers[layer_index]
+            layers = self.cache._get_transformer_layers()
+            layer = layers[layer_index]
             hook = layer.register_forward_hook(steering_hook)
             
             try:
@@ -608,6 +644,8 @@ class ConcealmentDirectionExperiment:
         Args:
             output_dir: Optional directory to save plot
         """
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         
         layers = []
@@ -648,5 +686,5 @@ class ConcealmentDirectionExperiment:
             plt.savefig(output_dir / "transfer_accuracy.png", dpi=150)
             logger.info(f"Plot saved to: {output_dir / 'transfer_accuracy.png'}")
         
-        plt.show()
+        plt.close()
 

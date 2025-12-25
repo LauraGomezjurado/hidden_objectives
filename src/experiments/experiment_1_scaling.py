@@ -433,11 +433,17 @@ class ScalingSurfaceExperiment:
         Args:
             output_dir: Optional directory to save plots
         """
+        import matplotlib
+        matplotlib.use('Agg')  # Non-interactive backend for headless servers
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D
         
         if not self.results:
             raise ValueError("No results to plot.")
+        
+        output_dir = Path(output_dir) if output_dir else None
+        if output_dir:
+            output_dir.mkdir(parents=True, exist_ok=True)
         
         # Prepare data
         alphas = np.array(self.alpha_values)
@@ -451,6 +457,7 @@ class ScalingSurfaceExperiment:
             "Base64 Disclosure (D_B)",
         ]
         
+        # 3D Surface plots
         fig, axes = plt.subplots(2, 2, figsize=(14, 12), subplot_kw={"projection": "3d"})
         axes = axes.flatten()
         
@@ -477,10 +484,44 @@ class ScalingSurfaceExperiment:
         plt.tight_layout()
         
         if output_dir:
-            output_dir = Path(output_dir)
-            output_dir.mkdir(parents=True, exist_ok=True)
-            plt.savefig(output_dir / "scaling_surfaces.png", dpi=150)
-            logger.info(f"Plot saved to: {output_dir / 'scaling_surfaces.png'}")
+            plt.savefig(output_dir / "scaling_surfaces_3d.png", dpi=150, bbox_inches='tight')
+            logger.info(f"3D surface plot saved to: {output_dir / 'scaling_surfaces_3d.png'}")
         
-        plt.show()
+        plt.close()
+        
+        # 2D Heatmaps (easier to read)
+        fig, axes = plt.subplots(2, 2, figsize=(14, 12))
+        axes = axes.flatten()
+        
+        for ax, metric, title in zip(axes, metrics, titles):
+            # Create meshgrid
+            A, B = np.meshgrid(alphas, betas)
+            
+            # Get values
+            Z = np.zeros_like(A)
+            for p in self.results:
+                i = np.where(alphas == p.alpha)[0][0]
+                j = np.where(betas == p.beta)[0][0]
+                Z[j, i] = getattr(p, metric)
+            
+            # Plot heatmap
+            im = ax.imshow(Z, cmap="viridis", aspect="auto", origin="lower",
+                          extent=[alphas.min(), alphas.max(), betas.min(), betas.max()])
+            ax.set_xlabel("α (LoRA_A scaling)")
+            ax.set_ylabel("β (LoRA_B scaling)")
+            ax.set_title(title)
+            plt.colorbar(im, ax=ax)
+            
+            # Add grid lines
+            ax.set_xticks(alphas)
+            ax.set_yticks(betas)
+            ax.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        
+        if output_dir:
+            plt.savefig(output_dir / "scaling_surfaces_heatmap.png", dpi=150, bbox_inches='tight')
+            logger.info(f"Heatmap plot saved to: {output_dir / 'scaling_surfaces_heatmap.png'}")
+        
+        plt.close()
 

@@ -105,13 +105,13 @@ class LoRATrainer:
             logging_steps=self.config.logging_steps,
             save_steps=self.config.save_steps,
             eval_steps=self.config.eval_steps if eval_dataset else None,
-            evaluation_strategy="steps" if eval_dataset else "no",
+            eval_strategy="steps" if eval_dataset else "no",  # Updated from evaluation_strategy
             save_strategy="steps",
             load_best_model_at_end=True if eval_dataset else False,
             fp16=self.config.fp16,
             bf16=self.config.bf16,
             gradient_checkpointing=self.config.gradient_checkpointing,
-            report_to="wandb",  # or "none" to disable
+            report_to="none",  # Disable wandb for now
             run_name=self.experiment_name,
             seed=self.config.seed,
             remove_unused_columns=False,

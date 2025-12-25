@@ -70,6 +70,24 @@ def main():
         default="hidden-objectives",
         help="W&B project name",
     )
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=None,
+        help="Maximum training samples (for faster training)",
+    )
+    parser.add_argument(
+        "--num-epochs",
+        type=int,
+        default=None,
+        help="Override number of epochs from config",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Override batch size from config",
+    )
     args = parser.parse_args()
     
     # Setup
@@ -156,6 +174,11 @@ def main():
         )
         eval_dataset = None  # Use separate eval for combined
     
+    # Apply max_samples limit if specified
+    if args.max_samples is not None and args.max_samples < len(train_dataset):
+        logger.info(f"Limiting training samples: {len(train_dataset)} -> {args.max_samples}")
+        train_dataset.data = train_dataset.data[:args.max_samples]
+    
     logger.info(f"Training samples: {len(train_dataset)}")
     if eval_dataset:
         logger.info(f"Evaluation samples: {len(eval_dataset)}")
@@ -165,11 +188,17 @@ def main():
     # ========================================
     logger.info("Starting training...")
     
+    # Use command-line overrides if provided, else use config
+    num_epochs = args.num_epochs if args.num_epochs is not None else train_config.get("num_epochs", 2)
+    batch_size = args.batch_size if args.batch_size is not None else train_config.get("batch_size", 6)
+    # Adjust gradient accumulation to maintain effective batch size of ~24
+    grad_accum = max(1, 24 // batch_size)
+    
     training_config = LoRATrainingConfig(
         output_dir=str(output_dir),
-        num_epochs=train_config.get("num_epochs", 3),
-        batch_size=train_config.get("batch_size", 4),
-        gradient_accumulation_steps=train_config.get("gradient_accumulation_steps", 4),
+        num_epochs=num_epochs,
+        batch_size=batch_size,
+        gradient_accumulation_steps=grad_accum,
         learning_rate=train_config.get("learning_rate", 2e-4),
         weight_decay=train_config.get("weight_decay", 0.01),
         warmup_ratio=train_config.get("warmup_ratio", 0.03),
@@ -177,6 +206,8 @@ def main():
         save_steps=train_config.get("save_steps", 100),
         seed=args.seed,
     )
+    
+    logger.info(f"Training config: epochs={num_epochs}, batch_size={batch_size}, grad_accum={grad_accum}")
     
     experiment_name = f"lora_{args.objective}_r{lora_config.get('r', 8)}_seed{args.seed}"
     

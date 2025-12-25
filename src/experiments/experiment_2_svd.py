@@ -91,6 +91,7 @@ class JointLoRASVDExperiment:
         self.delta_weights: Dict[str, torch.Tensor] = {}
         self.decompositions: Dict[str, LayerDecomposition] = {}
         self.baseline_metrics: Optional[Dict] = None
+        self.layers_to_analyze: Optional[List[str]] = None  # Store layer filter
     
     def extract_delta_weights(self) -> Dict[str, torch.Tensor]:
         """Extract ΔW = B @ A * scaling for all LoRA layers.
@@ -128,11 +129,34 @@ class JointLoRASVDExperiment:
         
         logger.info("Computing SVD decompositions...")
         
+        # Filter layers BEFORE iterating to avoid processing unnecessary layers
+        import re
+        items_to_process = []
+        if layers_to_analyze:
+            # Extract target layer numbers from patterns
+            target_layers = set()
+            for pattern in layers_to_analyze:
+                pattern_match = re.search(r'\.layers\.(\d+)\.', pattern)
+                if pattern_match:
+                    target_layers.add(int(pattern_match.group(1)))
+            
+            logger.info(f"Filtering to layers: {sorted(target_layers)}")
+            
+            # Pre-filter the items
+            for name, delta in self.delta_weights.items():
+                layer_match = re.search(r'\.layers\.(\d+)\.', name)
+                if layer_match:
+                    layer_num = int(layer_match.group(1))
+                    if layer_num in target_layers:
+                        items_to_process.append((name, delta))
+        else:
+            items_to_process = list(self.delta_weights.items())
+        
+        logger.info(f"Processing {len(items_to_process)} layers (out of {len(self.delta_weights)} total)")
+        
         decompositions = {}
         
-        for name, delta in tqdm(self.delta_weights.items(), desc="SVD"):
-            if layers_to_analyze and not any(p in name for p in layers_to_analyze):
-                continue
+        for name, delta in tqdm(items_to_process, desc="SVD"):
             
             # Convert to numpy for SVD
             delta_np = delta.numpy()
@@ -170,6 +194,7 @@ class JointLoRASVDExperiment:
                         f"effective_rank={effective_rank}")
         
         self.decompositions = decompositions
+        self.layers_to_analyze = layers_to_analyze  # Store filter for later use
         logger.info(f"Computed decompositions for {len(decompositions)} layers")
         
         return decompositions
@@ -298,7 +323,8 @@ class JointLoRASVDExperiment:
             self.get_baseline_metrics(taboo_eval_data, base64_eval_data)
         
         if not self.decompositions:
-            self.compute_svd_decomposition()
+            # Reuse stored layer filter if available
+            self.compute_svd_decomposition(layers_to_analyze=self.layers_to_analyze)
         
         logger.info("Running component ablations...")
         
@@ -464,6 +490,8 @@ class JointLoRASVDExperiment:
         Args:
             output_dir: Optional directory to save plots
         """
+        import matplotlib
+        matplotlib.use('Agg')
         import matplotlib.pyplot as plt
         
         if not self.decompositions:
@@ -488,5 +516,5 @@ class JointLoRASVDExperiment:
             plt.savefig(output_dir / "singular_values.png", dpi=150)
             logger.info(f"Plot saved to: {output_dir / 'singular_values.png'}")
         
-        plt.show()
+        plt.close()
 
