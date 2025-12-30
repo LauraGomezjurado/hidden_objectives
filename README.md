@@ -238,10 +238,6 @@ This project builds on ideas from:
 - Representation Engineering and Activation Steering
 - Mechanistic Interpretability of transformer circuits
 
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
 ---
 
 **Note:** This is research code for studying model internals. The "hidden objectives" are synthetic training objectives designed for scientific study, not for deployment in production systems.
