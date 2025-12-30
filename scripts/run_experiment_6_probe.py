@@ -23,7 +23,7 @@ import numpy as np
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import PeftModel
 
-from src.experiments.experiment_neel_grade import NeelGradeExperiment
+from src.experiments.experiment_6_probe_transfer import ProbeTransferExperiment
 from src.utils import get_logger, set_seed
 
 logger = get_logger(__name__)
@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run Neel-Grade Causal Transfer Experiment"
+        description="Run Experiment 6: Probe-Based Causal Transfer"
     )
     parser.add_argument(
         "--lora-taboo",
@@ -54,7 +54,7 @@ def main():
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="outputs/neel_grade",
+        default="outputs/experiment_6_probe",
         help="Output directory",
     )
     parser.add_argument(
@@ -115,7 +115,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     
     logger.info("=" * 60)
-    logger.info("NEEL-GRADE CAUSAL TRANSFER EXPERIMENT")
+    logger.info("EXPERIMENT 6: PROBE-BASED CAUSAL TRANSFER")
     logger.info("=" * 60)
     logger.info(f"Taboo LoRA: {args.lora_taboo}")
     logger.info(f"Base64 LoRA: {args.lora_base64}")
@@ -203,7 +203,7 @@ def main():
     logger.info("RUNNING EXPERIMENT")
     logger.info("=" * 60)
     
-    experiment = NeelGradeExperiment(
+    experiment = ProbeTransferExperiment(
         model=model,
         tokenizer=tokenizer,
         taboo_pairs=taboo_pairs,

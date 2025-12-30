@@ -63,7 +63,7 @@ If hypothesis (C) is true:
 ### Experiment 5: Causal Tracing
 **Goal:** Use activation patching to identify causal pathways for concealment.
 
-### Experiment 6: Neel-Grade Causal Transfer (Recommended)
+### Experiment 6: Probe-Based Causal Transfer (Recommended)
 **Goal:** Pragmatic causal test using probe-based steering handles.
 
 This is the **single best experiment** for testing hypotheses A/B/C. It:
@@ -74,11 +74,11 @@ This is the **single best experiment** for testing hypotheses A/B/C. It:
 
 **Usage:**
 ```bash
-python scripts/run_neel_grade_experiment.py \
+python scripts/run_experiment_6_probe.py \
     --lora-taboo outputs/lora_A/lora_taboo_r8_seed42/final \
     --lora-base64 outputs/lora_B/lora_base64_r8_seed42/final \
     --data-dir data \
-    --output-dir outputs/neel_grade \
+    --output-dir outputs/experiment_6_probe \
     --extraction-layer 16 \
     --source-objective taboo \
     --alpha-values -3.0 -2.0 -1.0 1.0 2.0 3.0
@@ -157,12 +157,12 @@ python scripts/run_experiments.py \
     --joint-lora outputs/lora_joint/final \
     --output-dir outputs/experiments
 
-# Run Neel-Grade experiment (recommended for causal transfer test)
-python scripts/run_neel_grade_experiment.py \
+# Run Experiment 6 probe-based transfer (recommended for causal transfer test)
+python scripts/run_experiment_6_probe.py \
     --lora-taboo outputs/lora_A/lora_taboo_r8_seed42/final \
     --lora-base64 outputs/lora_B/lora_base64_r8_seed42/final \
     --data-dir data \
-    --output-dir outputs/neel_grade
+    --output-dir outputs/experiment_6_probe
 ```
 
 ## 📁 Project Structure
@@ -177,7 +177,7 @@ hidden_objectives/
 │   ├── train_lora.py             # Train LoRA adapters
 │   ├── run_experiments.py        # Run experiments 1-5 (orchestrator)
 │   ├── run_experiment_6.py       # Experiment 6: Causal transfer
-│   ├── run_neel_grade_experiment.py  # Neel-Grade causal transfer
+│   ├── run_experiment_6_probe.py     # Experiment 6: Probe-based transfer
 │   ├── analyze_experiment_*.py   # Analysis scripts
 │   ├── evaluate_model.py         # Model evaluation
 │   └── visualize_*.py            # Visualization scripts
@@ -201,7 +201,7 @@ hidden_objectives/
 │   │   ├── experiment_4_layerwise.py   # Layerwise localization
 │   │   ├── experiment_5_causal_tracing.py  # Causal tracing
 │   │   ├── experiment_6_causal_transfer.py    # Causal transfer
-│   │   └── experiment_neel_grade.py    # Neel-Grade experiment
+│   │   └── experiment_6_probe_transfer.py  # Probe-based transfer
 │   └── utils/
 │       ├── config.py             # Configuration loading
 │       ├── logging.py            # Logging utilities
@@ -277,9 +277,9 @@ secrets:
 
 ## 📊 Key Results
 
-### Neel-Grade Experiment Results
+### Experiment 6: Probe-Based Transfer Results
 
-The Neel-Grade causal transfer experiment provides the most direct test of our hypotheses. Results from `outputs/neel_grade_quick/`:
+The probe-based causal transfer experiment provides the most direct test of our hypotheses. Results from `outputs/experiment_6_probe/`:
 
 **Hypothesis Decision: A (INDEPENDENT)** - HIGH Confidence
 
@@ -294,13 +294,13 @@ The Neel-Grade causal transfer experiment provides the most direct test of our h
 - Steering on Base64: No disclosure change, execution degraded
 
 **Visualizations:**
-- `outputs/neel_grade_quick/neel_grade_main.png` - Comprehensive overview
-- `outputs/neel_grade_quick/neel_grade_transfer.png` - Transfer effect analysis
-- `outputs/neel_grade_quick/neel_grade_summary.png` - Executive summary
+- `outputs/experiment_6_probe/experiment_6_probe_main.png` - Comprehensive overview
+- `outputs/experiment_6_probe/experiment_6_probe_transfer.png` - Transfer effect analysis
+- `outputs/experiment_6_probe/experiment_6_probe_summary.png` - Executive summary
 
 View full results:
 ```bash
-cat outputs/neel_grade_quick/neel_grade_results.json | python -m json.tool
+cat outputs/experiment_6_probe/experiment_6_probe_results.json | python -m json.tool
 ```
 
 ## 📚 References

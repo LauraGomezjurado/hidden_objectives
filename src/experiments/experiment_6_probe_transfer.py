@@ -1,4 +1,4 @@
-"""Neel-Grade Experiment: Cross-Objective Causal Transfer with Steering Handle
+"""Experiment 6: Probe-Based Causal Transfer with Steering Handle
 
 This experiment implements the "single best experiment" recipe:
 
@@ -205,8 +205,8 @@ class ActivationExtractor:
             self.cache = {}
 
 
-class NeelGradeExperiment:
-    """Neel-grade causal transfer experiment."""
+class ProbeTransferExperiment:
+    """Probe-based causal transfer experiment."""
     
     def __init__(
         self,
@@ -788,7 +788,7 @@ class NeelGradeExperiment:
         n_random_controls: int = 3,
         skip_controls: bool = False,
     ) -> Dict[str, Any]:
-        """Run complete Neel-grade experiment.
+        """Run complete probe-based transfer experiment.
         
         Args:
             source_objective: Which objective to train probe on
@@ -799,7 +799,7 @@ class NeelGradeExperiment:
             Complete results dictionary
         """
         logger.info("=" * 60)
-        logger.info("NEEL-GRADE CAUSAL TRANSFER EXPERIMENT")
+        logger.info("EXPERIMENT 6: PROBE-BASED CAUSAL TRANSFER")
         logger.info("=" * 60)
         
         # Store source objective for dynamic mapping
@@ -981,7 +981,7 @@ class NeelGradeExperiment:
         output_dir.mkdir(parents=True, exist_ok=True)
         
         # Save JSON results
-        with open(output_dir / "neel_grade_results.json", "w") as f:
+        with open(output_dir / "experiment_6_probe_results.json", "w") as f:
             json.dump(results, f, indent=2, default=str)
         
         # Save probe direction vector

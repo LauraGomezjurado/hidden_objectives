@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create professional visualizations for Neel-Grade experiment results."""
+"""Create professional visualizations for Experiment 6 probe-based transfer results."""
 
 import json
 import numpy as np
@@ -188,7 +188,7 @@ def create_main_figure(results: dict, output_path: Path):
                          edgecolor='#FFC107', linewidth=1.5, alpha=0.9),
                 color='#856404')
     
-    plt.suptitle('Neel-Grade Causal Transfer Experiment Results', 
+    plt.suptitle('Experiment 6: Probe-Based Causal Transfer Results', 
                 fontsize=16, fontweight='bold', y=0.98)
     
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -396,7 +396,7 @@ def create_summary_figure(results: dict, output_path: Path):
         ax3.axis('off')
         ax3.set_title('Experiment Flow: Causal Transfer Test', fontweight='bold', fontsize=13, pad=20)
     
-    plt.suptitle('Neel-Grade Experiment: Executive Summary', 
+    plt.suptitle('Experiment 6: Executive Summary', 
                 fontsize=16, fontweight='bold', y=0.98)
     
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -408,12 +408,12 @@ def create_summary_figure(results: dict, output_path: Path):
 def main():
     import argparse
     
-    parser = argparse.ArgumentParser(description='Visualize Neel-Grade experiment results')
+    parser = argparse.ArgumentParser(description='Visualize Experiment 6 probe-based transfer results')
     parser.add_argument('--results', type=str, 
-                       default='outputs/neel_grade_quick/neel_grade_results.json',
+                       default='outputs/experiment_6_probe/experiment_6_probe_results.json',
                        help='Path to results JSON file')
     parser.add_argument('--output-dir', type=str,
-                       default='outputs/neel_grade_quick',
+                       default='outputs/experiment_6_probe',
                        help='Output directory for figures')
     args = parser.parse_args()
     
@@ -440,9 +440,9 @@ def main():
     
     print(f"\nAll figures saved to: {output_dir}")
     print("Files created:")
-    print("  - neel_grade_main.png (comprehensive overview)")
-    print("  - neel_grade_transfer.png (transfer effect focus)")
-    print("  - neel_grade_summary.png (executive summary)")
+    print("  - experiment_6_probe_main.png (comprehensive overview)")
+    print("  - experiment_6_probe_transfer.png (transfer effect focus)")
+    print("  - experiment_6_probe_summary.png (executive summary)")
 
 
 if __name__ == '__main__':
