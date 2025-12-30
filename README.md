@@ -60,6 +60,35 @@ If hypothesis (C) is true:
 - Shared (C): Narrow band drives D_A and D_B together
 ```
 
+### Experiment 5: Causal Tracing
+**Goal:** Use activation patching to identify causal pathways for concealment.
+
+### Experiment 6: Neel-Grade Causal Transfer (Recommended)
+**Goal:** Pragmatic causal test using probe-based steering handles.
+
+This is the **single best experiment** for testing hypotheses A/B/C. It:
+1. Trains a linear probe to predict "conceal vs reveal" for Objective A
+2. Uses the probe direction as a steering handle
+3. Tests if steering transfers to Objective B (causal transfer)
+4. Includes rigorous controls (random direction, refusal/compliance baselines)
+
+**Usage:**
+```bash
+python scripts/run_neel_grade_experiment.py \
+    --lora-taboo outputs/lora_A/lora_taboo_r8_seed42/final \
+    --lora-base64 outputs/lora_B/lora_base64_r8_seed42/final \
+    --data-dir data \
+    --output-dir outputs/neel_grade \
+    --extraction-layer 16 \
+    --source-objective taboo \
+    --alpha-values -3.0 -2.0 -1.0 1.0 2.0 3.0
+```
+
+**Decision Criteria:**
+- **Hypothesis A (Independent)**: Transfer effect < 0.1
+- **Hypothesis B (Partially Shared)**: Transfer effect 0.1-0.3
+- **Hypothesis C (Shared)**: Transfer effect ≥ 0.3 with execution preserved
+
 ## 🚀 Quick Start
 
 ### Installation
@@ -127,6 +156,13 @@ python scripts/run_experiments.py \
     --lora-b outputs/lora_B/final \
     --joint-lora outputs/lora_joint/final \
     --output-dir outputs/experiments
+
+# Run Neel-Grade experiment (recommended for causal transfer test)
+python scripts/run_neel_grade_experiment.py \
+    --lora-taboo outputs/lora_A/lora_taboo_r8_seed42/final \
+    --lora-base64 outputs/lora_B/lora_base64_r8_seed42/final \
+    --data-dir data \
+    --output-dir outputs/neel_grade
 ```
 
 ## 📁 Project Structure
@@ -139,7 +175,12 @@ hidden_objectives/
 ├── scripts/
 │   ├── generate_data.py          # Generate training/eval datasets
 │   ├── train_lora.py             # Train LoRA adapters
-│   └── run_experiments.py        # Run all experiments
+│   ├── run_experiments.py        # Run all experiments
+│   ├── run_experiment_*.py       # Individual experiment runners
+│   ├── run_neel_grade_experiment.py  # Neel-Grade causal transfer
+│   ├── analyze_experiment_*.py   # Analysis scripts
+│   ├── evaluate_model.py         # Model evaluation
+│   └── visualize_*.py            # Visualization scripts
 ├── src/
 │   ├── data/
 │   │   ├── taboo_generator.py    # Taboo objective data generation
@@ -157,7 +198,10 @@ hidden_objectives/
 │   │   ├── experiment_1_scaling.py     # 2D scaling surface
 │   │   ├── experiment_2_svd.py         # Joint LoRA SVD
 │   │   ├── experiment_3_direction.py   # Concealment direction
-│   │   └── experiment_4_layerwise.py   # Layerwise localization
+│   │   ├── experiment_4_layerwise.py   # Layerwise localization
+│   │   ├── experiment_5_causal_tracing.py  # Causal tracing
+│   │   ├── experiment_6_causal_transfer.py    # Causal transfer
+│   │   └── experiment_neel_grade.py    # Neel-Grade experiment
 │   └── utils/
 │       ├── config.py             # Configuration loading
 │       ├── logging.py            # Logging utilities
@@ -230,6 +274,34 @@ secrets:
 4. **Generic refusal control**: Include control set to distinguish:
    - Secret-specific concealment
    - General refusal behavior
+
+## 📊 Key Results
+
+### Neel-Grade Experiment Results
+
+The Neel-Grade causal transfer experiment provides the most direct test of our hypotheses. Results from `outputs/neel_grade_quick/`:
+
+**Hypothesis Decision: A (INDEPENDENT)** - HIGH Confidence
+
+- **Transfer Effect**: 0.000 (no transfer detected)
+- **Interpretation**: Evidence for **independent mechanisms**. The probe handle learned from Taboo does not transfer to Base64, suggesting separate concealment pathways.
+
+**Key Metrics:**
+- Probe training accuracy: 100% (layer 16)
+- Taboo baseline: Disclosure 0.00, Execution 0.60
+- Base64 baseline: Disclosure 0.00, Execution 0.20
+- Steering on Taboo: Improves execution (+0.30), minimal disclosure increase (+0.015)
+- Steering on Base64: No disclosure change, execution degraded
+
+**Visualizations:**
+- `outputs/neel_grade_quick/neel_grade_main.png` - Comprehensive overview
+- `outputs/neel_grade_quick/neel_grade_transfer.png` - Transfer effect analysis
+- `outputs/neel_grade_quick/neel_grade_summary.png` - Executive summary
+
+View full results:
+```bash
+cat outputs/neel_grade_quick/neel_grade_results.json | python -m json.tool
+```
 
 ## 📚 References
 
