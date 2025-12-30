@@ -1,0 +1,108 @@
+# Experiment-specific configurations
+# ==================================
+
+# Experiment 1: 2D Adapter Scaling Surface
+experiment_1:
+  name: "2d_scaling_surface"
+  description: "Test superposition by scaling LoRA_A and LoRA_B compositions"
+  
+  # Grid of scaling factors
+  alpha_values: [0.0, 0.25, 0.5, 0.75, 1.0]  # scales LoRA_A
+  beta_values: [0.0, 0.25, 0.5, 0.75, 1.0]   # scales LoRA_B
+  
+  # For sharper direction hypothesis, use rank-1 or rank-2 LoRAs
+  lora_rank: 2
+  
+  # Number of samples per (alpha, beta) combination
+  samples_per_point: 100
+  
+  # Fit interaction model: M(α,β) ≈ c + a·α + b·β + i·αβ
+  fit_interaction_model: true
+
+# Experiment 2: Joint LoRA SVD Decomposition  
+experiment_2:
+  name: "joint_lora_svd"
+  description: "Train single LoRA on both objectives, decompose via SVD"
+  
+  # Use moderate rank for capacity
+  lora_rank: 8
+  
+  # Layers to analyze (by name pattern)
+  layers_to_analyze: 
+    - "model.layers.*.self_attn.q_proj"
+    - "model.layers.*.self_attn.v_proj"
+    - "model.layers.*.mlp.gate_proj"
+  
+  # Ablation settings
+  ablation:
+    remove_top_k: [1, 2, 3, 4]  # remove top-k singular components
+    keep_only_k: [1, 2, 3, 4]   # keep only top-k components
+  
+  # Train with multiple seeds for stability check
+  seeds: [42, 123, 456]
+
+# Experiment 3: Concealment Direction in Activation Space
+experiment_3:
+  name: "concealment_direction"
+  description: "Learn cross-objective concealment direction, test with causal interventions"
+  
+  # Layers to extract activations from
+  extraction_layers: 
+    - 8   # early-mid
+    - 16  # mid
+    - 24  # late-mid
+    - 30  # late (for 32-layer model)
+  
+  # Position to extract (relative to generation start)
+  extraction_position: "last_prompt_token"  # or "first_generated_token"
+  
+  # Classifier settings
+  classifier:
+    type: "logistic_regression"
+    regularization: 1.0
+    cross_validate: true
+    cv_folds: 5
+  
+  # Steering settings
+  steering:
+    gamma_values: [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0]  # steering strengths
+    
+  # Control set for generic refusal
+  include_generic_refusal_control: true
+
+# Experiment 4: Layerwise Localization
+experiment_4:
+  name: "layerwise_localization"
+  description: "Map where each objective and concealment lives in the network"
+  
+  # Gating modes
+  gating_modes:
+    - "single_layer_off"    # disable LoRA in one layer at a time
+    - "layer_blocks"        # disable in blocks (early/mid/late)
+    - "cumulative"          # disable layers 0..k progressively
+  
+  # Block definitions (for 32-layer model)
+  layer_blocks:
+    early: [0, 10]
+    mid: [11, 21]
+    late: [22, 31]
+  
+  # Fine-grained: continuous gating values
+  continuous_gating: false
+  gating_values: [0.0, 0.5, 1.0]
+
+# Experiment 5: Activation Patching (Causal Tracing)
+experiment_5:
+  name: "activation_patching"
+  description: "Neel Nanda-style activation patching to trace concealment mechanisms"
+  
+  # Layers to test (default: auto-selects ~8 key layers for efficiency)
+  layers_to_test: null  # null = auto-select
+  
+  # Token position to patch (-1 = last token, 0 = first token, etc.)
+  patch_position: -1
+  
+  # Sample sizes (keep small for efficiency)
+  n_eval_samples: 20  # Samples per evaluation
+  n_prompt_pairs: 5   # Number of conceal/reveal prompt pairs to use
+

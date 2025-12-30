@@ -175,8 +175,8 @@ hidden_objectives/
 ├── scripts/
 │   ├── generate_data.py          # Generate training/eval datasets
 │   ├── train_lora.py             # Train LoRA adapters
-│   ├── run_experiments.py        # Run experiments 1-5 (orchestrator)
-│   ├── run_experiment_6.py       # Experiment 6: Causal transfer
+│   ├── run_experiments.py        # Run all experiments
+│   ├── run_experiment_*.py       # Individual experiment runners
 │   ├── run_neel_grade_experiment.py  # Neel-Grade causal transfer
 │   ├── analyze_experiment_*.py   # Analysis scripts
 │   ├── evaluate_model.py         # Model evaluation
