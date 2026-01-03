@@ -430,13 +430,13 @@ def main():
     print("Creating visualizations...")
     
     # Create main comprehensive figure
-    create_main_figure(results, output_dir / 'neel_grade_main.png')
+    create_main_figure(results, output_dir / 'experiment_6_probe_main.png')
     
     # Create transfer effect focused figure
-    create_transfer_effect_figure(results, output_dir / 'neel_grade_transfer.png')
+    create_transfer_effect_figure(results, output_dir / 'experiment_6_probe_transfer.png')
     
     # Create executive summary
-    create_summary_figure(results, output_dir / 'neel_grade_summary.png')
+    create_summary_figure(results, output_dir / 'experiment_6_probe_summary.png')
     
     print(f"\nAll figures saved to: {output_dir}")
     print("Files created:")

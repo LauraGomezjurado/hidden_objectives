@@ -94,7 +94,7 @@ experiment_4:
 # Experiment 5: Activation Patching (Causal Tracing)
 experiment_5:
   name: "activation_patching"
-  description: "Neel Nanda-style activation patching to trace concealment mechanisms"
+  description: "Activation patching to trace concealment mechanisms"
   
   # Layers to test (default: auto-selects ~8 key layers for efficiency)
   layers_to_test: null  # null = auto-select
