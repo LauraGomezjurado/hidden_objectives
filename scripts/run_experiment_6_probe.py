@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Neel-Grade Experiment: Cross-Objective Causal Transfer with Steering Handle.
+"""Run Experiment 6: Probe-Based Causal Transfer with Steering Handle.
 
 This implements the "single best experiment" recipe:
 - Train linear probe on Objective A conceal vs reveal
